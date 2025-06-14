@@ -1,25 +1,31 @@
 import openai
 import os
 from dotenv import load_dotenv
+import tiktoken
 
 load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
+
+def chunk_text(text, max_tokens=500):
+    encoding = tiktoken.get_encoding("cl100k_base")
+    words = text.split()
+    chunk,chunks = [],[]
+
+    for word in words:
+        chunk.append(word)
+        if len(encoding.encode(" ".join(chunk))) > max_tokens:
+            chunks.append(" ".join(chunk))
+            chunk = []
     
-def ask_llm(question, documents):
-    context = "\n\n---\n\n".join(documents)
-    prompt = f"""Answer the question below based on the following documents:
+    if chunk:
+        chunks.append(" ".join(chunk))
+    print(f"Chunked {len(words)} words into {len(chunks)} chunks")
+    return chunks
+            
+def get_embedding(text, model="text-embedding-3-small"):
+    text = text.replace("\n", " ").strip()
+    response = client.embeddings.create(input=[text], model=model)
+    return response.data[0].embedding
 
-    {context}
-
-    Question: {question}
-    Answer:"""
-
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Using a valid model name
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-
-    return response.choices[0].message.content.strip()

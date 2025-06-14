@@ -2,3 +2,5 @@ requests
 boilerpy3
 openai
 python-dotenv
+faiss-cpu
+tiktoken

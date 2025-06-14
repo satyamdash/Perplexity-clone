@@ -1,30 +1,77 @@
-# main.py
-from scraper import extract_text_from_url
-from summarizer import ask_llm
+from scraper import scrape_url
+from summarizer import chunk_text, get_embedding
+from faiss_store import FAISSStore
+import openai
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+def prepare_knowledge_base(urls):
+    all_chunks = []
+    all_embeddings = []
+
+    for url in urls:
+        print(f"Scraping: {url}")
+        text = scrape_url(url)
+        if not text:
+            continue
+        chunks = chunk_text(text)
+        for chunk in chunks:
+            embedding = get_embedding(chunk)
+            all_chunks.append(chunk)
+            all_embeddings.append(embedding)
+
+    if all_embeddings:
+        dim = len(all_embeddings[0])
+    else:
+        dim = 0
+    store = FAISSStore(dim)
+    store.add(all_embeddings, all_chunks)
+    return store
+
+
+def ask_llm(question, context_chunks):
+    context = "\n\n---\n\n".join(context_chunks)
+    prompt = f"""Answer the question below using the following context:\n\n{context}\n\nQuestion: {question}\nAnswer:"""
+
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+    return response.choices[0].message.content.strip()
+
 
 def main():
-    print("🤖 Ask me anything! I’ll search and answer using live websites.")
-    query = input("Your question: ")
-
     urls = []
-    print("Enter up to 3 URLs (press enter to stop):")
-    for _ in range(3):
+    print("Enter URLs (one per line). Type 'done' when finished:")
+    while True:
         url = input("URL: ").strip()
-        if not url:
+        if url.lower() == "done":
             break
         urls.append(url)
 
-    print("\n🔍 Scraping and analyzing...")
-    docs = [extract_text_from_url(url) for url in urls]
-    docs = [d for d in docs if d]  # remove failed scrapes
-
-    if not docs:
-        print("❌ No content retrieved. Try different URLs.")
+    if not urls:
+        print("No URLs provided.")
         return
 
-    answer = ask_llm(query, docs)
-    print("\n🧠 Answer:\n")
-    print(answer)
+    print("\nPreparing knowledge base...")
+    store = prepare_knowledge_base(urls)
+
+    while True:
+        question = input("\nAsk a question (or type 'exit' to quit): ").strip()
+        if question.lower() == "exit":
+            break
+
+        question_embedding = get_embedding(question)
+        top_chunks = store.search(question_embedding, top_k=5)
+        print(f"Found {len(top_chunks)} relevant chunks")
+        answer = ask_llm(question, top_chunks)
+        print("\n🧠 Answer:\n", answer)
+
 
 if __name__ == "__main__":
     main()
