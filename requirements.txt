@@ -1,0 +1,4 @@
+requests
+boilerpy3
+openai
+python-dotenv
