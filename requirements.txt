@@ -4,3 +4,4 @@ openai
 python-dotenv
 faiss-cpu
 tiktoken
+google-search-results
