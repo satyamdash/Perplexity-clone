@@ -16,6 +16,7 @@ def save_cache(cache):
 def get_or_embed(text, get_embedding_fn, cache):
     key = text.strip().replace("\n", " ")[:1000]  # truncate key to avoid huge cache keys
     if key in cache:
+        print(f"Cache hit")
         return cache[key]
     embedding = get_embedding_fn(text)
     cache[key] = embedding

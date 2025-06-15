@@ -1,11 +1,11 @@
-from scraper import scrape_url
-from summarizer import chunk_text, get_embedding
-from faiss_store import FAISSStore
+from .scraper import scrape_url
+from .summarizer import chunk_text, get_embedding
+from .faiss_store import FAISSStore
 import openai
 from dotenv import load_dotenv
 import os
-from embedding_cache import load_cache, save_cache, get_or_embed
-from serp_api import search_serpapi
+from .embedding_cache import load_cache, save_cache, get_or_embed
+from .serp_api import search_serpapi
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")

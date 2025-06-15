@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from corelogic import get_answer
+from .corelogic import get_answer
 
 app = FastAPI()
 
