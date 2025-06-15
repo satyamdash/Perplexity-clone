@@ -1,2 +1,4 @@
 .venv/
 .env
+embedding_cache.json
+kb.index
