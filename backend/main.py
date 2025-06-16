@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from .corelogic import get_answer
+import json
 
 app = FastAPI()
 
@@ -18,5 +20,23 @@ class Query(BaseModel):
 
 @app.post("/api/ask")
 async def ask_question(query: Query):
-    answer, urls = get_answer(query.question)
-    return { "answer": answer, "sources": urls }
+    answer_stream, urls = await get_answer(query.question)
+    
+    async def generate():
+        try:
+            # First send the URLs
+            yield f"data: {json.dumps({'type': 'urls', 'urls': urls})}\n\n"
+            
+            # Then stream the answer
+            async for chunk in answer_stream:
+                yield f"data: {json.dumps({'type': 'answer', 'content': chunk})}\n\n"
+            yield f"data: [DONE]\n\n"
+        except Exception as e:
+            print(f"Error in streaming: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'content': 'An error occurred while streaming the response.'})}\n\n"
+            yield f"data: [DONE]\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream"
+    )

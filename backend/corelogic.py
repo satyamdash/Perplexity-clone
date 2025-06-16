@@ -37,7 +37,7 @@ def prepare_knowledge_base(urls):
     return store
 
 
-def ask_llm(question, context_chunks):
+async def ask_llm(question, context_chunks):
     context = "\n\n---\n\n".join(context_chunks)
     prompt = f"""Answer the question below using the following context and keep your answer concise and to the point should be in 100 words:\n\n{context}\n\nQuestion: {question}\nAnswer:"""
 
@@ -45,11 +45,15 @@ def ask_llm(question, context_chunks):
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
+        stream=True
     )
-    return response.choices[0].message.content.strip()
+    
+    for chunk in response:
+        if chunk.choices[0].delta.content is not None:
+            yield chunk.choices[0].delta.content
 
 
-def get_answer(question):
+async def get_answer(question):
     try:
         urls = search_serpapi(question)
         print(f"Found {len(urls)} relevant URLs")
@@ -58,9 +62,8 @@ def get_answer(question):
         question_embedding = get_embedding(question)
         top_chunks = store.search(question_embedding, top_k=3)
         print(f"Found {len(top_chunks)} relevant chunks")
-        answer = ask_llm(question, top_chunks)
-        print("\n🧠 Answer:\n", answer)
-        return answer, urls
+        
+        return ask_llm(question, top_chunks), urls
     except Exception as e:
         print(f"Error: {e}")
         return "An error occurred while processing your request.", []
