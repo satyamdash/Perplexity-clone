@@ -4,3 +4,9 @@ embedding_cache.json
 kb.index
 TO-do.txt
 __pycache__/
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
