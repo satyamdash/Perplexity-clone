@@ -29,7 +29,10 @@ async def ask_question(query: Query):
             
             # Then stream the answer
             async for chunk in answer_stream:
-                yield f"data: {json.dumps({'type': 'answer', 'content': chunk})}\n\n"
+                if chunk.startswith("Follow up questions:"):
+                    yield f"data: {json.dumps({'type': 'follow_up', 'content': chunk})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'type': 'answer', 'content': chunk})}\n\n"
             yield f"data: [DONE]\n\n"
         except Exception as e:
             print(f"Error in streaming: {e}")
