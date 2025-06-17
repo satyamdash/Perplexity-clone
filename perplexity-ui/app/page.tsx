@@ -5,6 +5,7 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<string[]>([]);
+  const [followUp, setFollowUp] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -17,7 +18,7 @@ export default function Home() {
     setLoading(true);
     setAnswer("");
     setSources([]);
-
+    setFollowUp([]);
     try {
       const response = await fetch("http://localhost:8000/api/ask", {
         method: "POST",
@@ -54,6 +55,9 @@ export default function Home() {
                   break;
                 case 'answer':
                   setAnswer(prev => prev + parsed.content);
+                  break;
+                case 'follow_up':
+                  setFollowUp(prev => [...prev, parsed.content]);
                   break;
                 case 'error':
                   setAnswer(parsed.content);
@@ -105,7 +109,18 @@ export default function Home() {
           <div className="mt-6 bg-white p-4 rounded shadow">
             <h2 className="text-xl font-semibold mb-2">Answer:</h2>
             <p className="whitespace-pre-wrap">{answer}</p>
-            
+            {followUp.length > 0 && (
+              <>
+                <h3 className="text-md font-semibold mt-4">Follow up questions:</h3>
+                <ul className="list-disc ml-6 mt-2 text-sm">
+                  {followUp.map((question, i) => (
+                    <li key={i}>
+                      {question}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {sources.length > 0 && (
               <>
                 <h3 className="text-md font-semibold mt-4">Sources:</h3>
