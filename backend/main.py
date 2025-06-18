@@ -20,7 +20,7 @@ class Query(BaseModel):
 
 @app.post("/api/ask")
 async def ask_question(query: Query):
-    answer_stream, urls = await get_answer(query.question)
+    answer_stream, urls, follow_up_questions = await get_answer(query.question)
     
     async def generate():
         try:
@@ -29,10 +29,10 @@ async def ask_question(query: Query):
             
             # Then stream the answer
             async for chunk in answer_stream:
-                if chunk.startswith("Follow up questions:"):
-                    yield f"data: {json.dumps({'type': 'follow_up', 'content': chunk})}\n\n"
-                else:
-                    yield f"data: {json.dumps({'type': 'answer', 'content': chunk})}\n\n"
+                yield f"data: {json.dumps({'type': 'answer', 'content': chunk})}\n\n"
+            
+            # Finally send follow-up questions
+            yield f"data: {json.dumps({'type': 'follow_up_questions', 'questions': follow_up_questions})}\n\n"
             yield f"data: [DONE]\n\n"
         except Exception as e:
             print(f"Error in streaming: {e}")
