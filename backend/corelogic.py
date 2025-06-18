@@ -56,6 +56,28 @@ async def ask_llm(question, context_chunks):
             yield chunk.choices[0].delta.content
 
 
+async def generate_follow_up_questions(question, answer):
+    prompt = f"""Based on the following question and answer, generate 3 relevant follow-up questions that users might want to ask next. 
+    Make them specific and related to the topic. Return only the questions, one per line, without numbering.
+
+    Question: {question}
+    Answer: {answer}
+
+    Follow-up questions:"""
+
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=200
+    )
+    
+    questions = response.choices[0].message.content.strip().split('\n')
+    # Clean up the questions and filter out empty lines
+    questions = [q.strip().replace('- ', '').replace('• ', '').replace('1. ', '').replace('2. ', '').replace('3. ', '') for q in questions if q.strip()]
+    return questions[:3]  # Return max 3 questions
+
+
 async def get_answer(question):
     try:
         urls = search_serpapi(question)
@@ -66,7 +88,20 @@ async def get_answer(question):
         top_chunks = store.search(question_embedding, top_k=3)
         print(f"Found {len(top_chunks)} relevant chunks")
         
-        return ask_llm(question, top_chunks), urls
+        answer_stream = ask_llm(question, top_chunks)
+        
+        # Collect the full answer for follow-up questions
+        full_answer = ""
+        async def collect_answer():
+            nonlocal full_answer
+            async for chunk in answer_stream:
+                full_answer += chunk
+                yield chunk
+        
+        # Generate follow-up questions
+        follow_up_questions = await generate_follow_up_questions(question, full_answer)
+        
+        return collect_answer(), urls, follow_up_questions
     except Exception as e:
         print(f"Error: {e}")
-        return "An error occurred while processing your request.", []
+        return "An error occurred while processing your request.", [], []

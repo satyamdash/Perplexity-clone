@@ -5,25 +5,27 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<string[]>([]);
-  const [followUp, setFollowUp] = useState<string[]>([]);
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const ask = async () => {
+  const ask = async (questionToAsk?: string) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
 
+    const currentQuestion = questionToAsk || question;
     setLoading(true);
     setAnswer("");
     setSources([]);
-    setFollowUp([]);
+    setFollowUpQuestions([]);
+
     try {
       const response = await fetch("http://localhost:8000/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: currentQuestion }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -56,8 +58,9 @@ export default function Home() {
                 case 'answer':
                   setAnswer(prev => prev + parsed.content);
                   break;
-                case 'follow_up':
-                  setFollowUp(prev => [...prev, parsed.content]);
+                case 'follow_up_questions':
+                  console.log('Received follow-up questions:', parsed.questions);
+                  setFollowUpQuestions(parsed.questions);
                   break;
                 case 'error':
                   setAnswer(parsed.content);
@@ -82,6 +85,11 @@ export default function Home() {
     }
   };
 
+  const handleFollowUpClick = (followUpQuestion: string) => {
+    setQuestion(followUpQuestion);
+    ask(followUpQuestion);
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 p-10 text-gray-800">
       <div className="max-w-2xl mx-auto">
@@ -95,7 +103,7 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && !loading && ask()}
           />
           <button
-            onClick={ask}
+            onClick={() => ask()}
             disabled={!question || loading}
             className="bg-blue-600 text-white px-5 py-3 rounded disabled:opacity-50"
           >
@@ -109,18 +117,7 @@ export default function Home() {
           <div className="mt-6 bg-white p-4 rounded shadow">
             <h2 className="text-xl font-semibold mb-2">Answer:</h2>
             <p className="whitespace-pre-wrap">{answer}</p>
-            {followUp.length > 0 && (
-              <>
-                <h3 className="text-md font-semibold mt-4">Follow up questions:</h3>
-                <ul className="list-disc ml-6 mt-2 text-sm">
-                  {followUp.map((question, i) => (
-                    <li key={i}>
-                      {question}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            
             {sources.length > 0 && (
               <>
                 <h3 className="text-md font-semibold mt-4">Sources:</h3>
@@ -133,6 +130,30 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
+              </>
+            )}
+
+            {followUpQuestions.length > 0 && (
+              <>
+                <h3 className="text-md font-semibold mt-4">Follow-up Questions:</h3>
+                <div className="mt-2 space-y-2">
+                  {followUpQuestions.map((followUpQuestion, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleFollowUpClick(followUpQuestion)}
+                        className="text-blue-500 hover:text-blue-700 text-sm"
+                      >
+                        {followUpQuestion}
+                      </button>
+                      <button
+                        onClick={() => handleFollowUpClick(followUpQuestion)}
+                        className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </div>
