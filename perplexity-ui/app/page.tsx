@@ -59,8 +59,7 @@ export default function Home() {
                   setAnswer(prev => prev + parsed.content);
                   break;
                 case 'follow_up_questions':
-                  console.log('Received follow-up questions:', parsed.questions);
-                  setFollowUpQuestions(parsed.questions);
+                  setFollowUpQuestions(parsed.questions); 
                   break;
                 case 'error':
                   setAnswer(parsed.content);
@@ -139,12 +138,7 @@ export default function Home() {
                 <div className="mt-2 space-y-2">
                   {followUpQuestions.map((followUpQuestion, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleFollowUpClick(followUpQuestion)}
-                        className="text-blue-500 hover:text-blue-700 text-sm"
-                      >
-                        {followUpQuestion}
-                      </button>
+                      <p className="text-blue-500 hover:text-blue-700 text-sm">{followUpQuestion}</p>
                       <button
                         onClick={() => handleFollowUpClick(followUpQuestion)}
                         className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600"

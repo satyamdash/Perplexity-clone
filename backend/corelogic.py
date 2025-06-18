@@ -40,8 +40,6 @@ def prepare_knowledge_base(urls):
 async def ask_llm(question, context_chunks):
     context = "\n\n---\n\n".join(context_chunks)
     prompt = f"""Answer the question below using the following context and keep your answer concise and to the point should be in 100 words:\n\n{context}\n\nQuestion: {question}\nAnswer:
-    Then suggest 3 follow-up questions that a curious user might ask next.
-    Follow up questions:
     """
 
     response = openai.chat.completions.create(
