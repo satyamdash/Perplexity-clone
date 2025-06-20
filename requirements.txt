@@ -1,7 +1,42 @@
+#for web scraping
 requests
+#for html to text
 boilerpy3
+#for openai api
 openai
 python-dotenv
+#for faiss
 faiss-cpu
+#for tiktoken
 tiktoken
+#for google search results
 google-search-results
+#for fastapi integration with sqlalchemy
+fastapi-users[sqlalchemy2]
+# ORM for database
+sqlalchemy
+#for postgres
+psycopg2-binary
+#for async postgres
+asyncpg
+#for password hashing
+bcrypt
+#for asyncio
+greenlet
+fastapi
+#for jwt authentication
+python-jose[cryptography]
+#for email validation
+email-validator
+#for uvicorn
+uvicorn
+pydantic
+#for pydantic models
+pydantic-settings
+#for password hashing
+passlib
+jose
+
+
+
+

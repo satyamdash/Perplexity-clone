@@ -1,3 +1,5 @@
 Add a DB to save and cache user history and search history
-Add authentication to the app
+Add authentication to the app with email verification
 Suggest follow up questions based on the answer ✅
+Rate Limiting 
+EXplore graphql 
