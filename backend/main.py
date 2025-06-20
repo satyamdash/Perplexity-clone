@@ -3,9 +3,17 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from .corelogic import get_answer
+from .models.user import User
+from .pydanticschemas.user import UserResponse, UserCreate
+from .routers import users
+from .dbclient import Base, engine
+
 import json
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,8 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(users.router)
+
 class Query(BaseModel):
     question: str
+
+Base.metadata.create_all(bind=engine)
 
 @app.post("/api/ask")
 async def ask_question(query: Query):
