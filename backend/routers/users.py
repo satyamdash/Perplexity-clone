@@ -15,7 +15,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/api/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
@@ -27,7 +27,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
-@router.post("/login")
+@router.post("/api/login")
 def login_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user:

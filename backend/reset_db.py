@@ -2,7 +2,7 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy import inspect, text
-from db import Base  # import all your models so metadata includes them
+from backend.dbclient import Base  # import all your models so metadata includes them
 from dotenv import load_dotenv
 import os
 
