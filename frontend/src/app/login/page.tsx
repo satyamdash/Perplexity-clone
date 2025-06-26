@@ -13,10 +13,6 @@ interface LoginData {
   password: string;
 }
 
-interface ApiError {
-  detail: string;
-}
-
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -71,7 +67,7 @@ export default function LoginPage() {
           setError(data.detail);
         } else if (Array.isArray(data.detail)) {
           // Handle validation errors
-          const errorMessages = data.detail.map((err: any) => {
+          const errorMessages = data.detail.map((err: { msg?: string; message?: string }) => {
             if (typeof err === 'string') return err;
             if (err.msg) return err.msg;
             if (err.message) return err.message;
@@ -227,7 +223,7 @@ export default function LoginPage() {
                 className="mt-8 text-center"
               >
                 <p className="text-gray-400 text-sm">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
                     Sign up here
                   </Link>

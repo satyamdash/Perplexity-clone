@@ -127,8 +127,8 @@ export default function HomePage() {
           }
         }
       }
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") {
         console.log("Request aborted");
       } else {
         console.error("Error:", error);

@@ -13,10 +13,6 @@ interface RegisterData {
   password: string;
 }
 
-interface ApiError {
-  detail: string;
-}
-
 export default function RegisterPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -71,7 +67,7 @@ export default function RegisterPage() {
           setError(data.detail);
         } else if (Array.isArray(data.detail)) {
           // Handle validation errors
-          const errorMessages = data.detail.map((err: any) => {
+          const errorMessages = data.detail.map((err: { msg?: string; message?: string }) => {
             if (typeof err === 'string') return err;
             if (err.msg) return err.msg;
             if (err.message) return err.message;
