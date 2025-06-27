@@ -179,7 +179,7 @@ export default function HomePage() {
               className="flex items-center"
             >
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Perplexity Clone
+                Top3URL.ai
               </h1>
             </motion.div>
 

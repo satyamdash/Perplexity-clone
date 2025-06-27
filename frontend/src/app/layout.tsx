@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Perplexity Clone",
-  description: "AI-powered search assistant",
+  title: "Top3URL",
+  description: "Top3URL.ai is a tool that helps you find the best answers to your questions based on the top 3 results from a search engine.",
 };
 
 export default function RootLayout({
