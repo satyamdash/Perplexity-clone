@@ -1,5 +1,7 @@
 .venv/
 .env
+.env.local
+.env.backup
 embedding_cache.json
 kb.index
 TO-do.txt
