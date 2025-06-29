@@ -1,5 +1,7 @@
 #for web scraping
 requests
+#for async web scraping
+aiohttp
 #for html to text
 boilerpy3
 #for openai api

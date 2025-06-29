@@ -18,6 +18,9 @@ export default function HomePage() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [lastRequestTime, setLastRequestTime] = useState(0);
+  const [mode, setMode] = useState<'ultra' | 'serp' | 'deep'>('ultra');
+  const [status, setStatus] = useState<string>('');
 
   const words = [
     {
@@ -57,16 +60,19 @@ export default function HomePage() {
     },
   ];
 
-  const ask = async (questionToAsk?: string) => {
+  const ask = async (questionToAsk?: string, requestMode: 'ultra' | 'serp' | 'deep' = 'ultra') => {
     const currentQuestion = questionToAsk || question;
     if (!currentQuestion.trim()) return;
 
-    // Check if user is logged in before proceeding
-    if (!isLoggedIn) {
-      router.push('/login');
+    // Debounce requests (prevent spam)
+    const now = Date.now();
+    if (now - lastRequestTime < 1000) {
+      console.log("Request debounced");
       return;
     }
+    setLastRequestTime(now);
 
+    // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -76,26 +82,46 @@ export default function HomePage() {
     setAnswer("");
     setSources([]);
     setFollowUpQuestions([]);
+    setStatus("");
+    setMode(requestMode);
+
+    const endpointMap = {
+      'ultra': '/ask',
+      'serp': '/ask-serp',
+      'deep': '/ask-deep'
+    };
+    const endpoint = endpointMap[requestMode];
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ask`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
+        },
         body: JSON.stringify({ question: currentQuestion }),
         signal: abortControllerRef.current.signal,
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      if (!reader) return;
+      if (!reader) {
+        throw new Error("No response body");
+      }
 
+      let buffer = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -108,21 +134,29 @@ export default function HomePage() {
             try {
               const parsed = JSON.parse(data);
               switch (parsed.type) {
+                case 'mode':
+                  setMode(parsed.mode);
+                  break;
+                case 'status':
+                  setStatus(parsed.message);
+                  break;
                 case 'urls':
                   setSources(parsed.urls);
                   break;
                 case 'answer':
                   setAnswer(prev => prev + parsed.content);
+                  setStatus(""); // Clear status when answer starts
                   break;
                 case 'follow_up_questions':
                   setFollowUpQuestions(parsed.questions); 
                   break;
                 case 'error':
                   setAnswer(parsed.content);
+                  setLoading(false);
                   break;
               }
             } catch (e) {
-              console.error("Error parsing JSON:", e);
+              console.error("Error parsing JSON:", e, "Data:", data);
             }
           }
         }
@@ -132,7 +166,7 @@ export default function HomePage() {
         console.log("Request aborted");
       } else {
         console.error("Error:", error);
-        setAnswer("An error occurred while fetching the answer.");
+        setAnswer("An error occurred while fetching the answer. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -142,7 +176,7 @@ export default function HomePage() {
 
   const handleFollowUpClick = (followUpQuestion: string) => {
     setQuestion(followUpQuestion);
-    ask(followUpQuestion);
+    ask(followUpQuestion, mode); // Follow-ups use the same mode as the current question
   };
 
   const handleLogin = () => {
@@ -249,23 +283,64 @@ export default function HomePage() {
         >
           <BackgroundGradient className="rounded-[22px] p-1 bg-white dark:bg-zinc-900">
             <div className="bg-black rounded-[20px] p-8">
-              <div className="flex gap-4 mb-6">
+              <div className="space-y-4 mb-6">
                 <input
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   placeholder="Ask me anything..."
-                  className="flex-1 p-4 bg-zinc-900/50 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-white placeholder-gray-400 text-lg backdrop-blur-sm"
+                  className="w-full p-4 bg-zinc-900/50 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-white placeholder-gray-400 text-lg backdrop-blur-sm"
                   onKeyDown={(e) => e.key === "Enter" && !loading && question.trim() && ask()}
                 />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => ask()}
-                  disabled={!question.trim() || loading}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-4 rounded-lg font-medium transition-all duration-200 text-lg"
-                >
-                  {loading ? "Stop" : "Ask"}
-                </motion.button>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => ask(undefined, 'ultra')}
+                    disabled={!question.trim() || loading}
+                    className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 text-sm flex items-center justify-center gap-2"
+                  >
+                    <span>🚀</span>
+                    <div className="text-center">
+                      <div>{loading && mode === 'ultra' ? "Thinking..." : "Ultra Fast"}</div>
+                      <div className="text-xs opacity-75">(1-2s)</div>
+                    </div>
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => ask(undefined, 'serp')}
+                    disabled={!question.trim() || loading}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 text-sm flex items-center justify-center gap-2"
+                  >
+                    <span>⚡</span>
+                    <div className="text-center">
+                      <div>{loading && mode === 'serp' ? "Searching..." : "Web Search"}</div>
+                      <div className="text-xs opacity-75">(3-5s)</div>
+                    </div>
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => ask(undefined, 'deep')}
+                    disabled={!question.trim() || loading}
+                    className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 text-sm flex items-center justify-center gap-2"
+                  >
+                    <span>🔍</span>
+                    <div className="text-center">
+                      <div>{loading && mode === 'deep' ? "Deep Diving..." : "Deep Dive"}</div>
+                      <div className="text-xs opacity-75">(10-20s)</div>
+                    </div>
+                  </motion.button>
+                </div>
+                
+                {status && (
+                  <div className="text-center text-sm text-blue-400 animate-pulse">
+                    {status}
+                  </div>
+                )}
               </div>
 
               {loading && (
@@ -285,7 +360,19 @@ export default function HomePage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="border-t border-zinc-700 pt-6"
                 >
-                  <h3 className="text-xl font-semibold text-white mb-4">Answer:</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="text-xl font-semibold text-white">Answer:</h3>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      mode === 'ultra' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      mode === 'serp' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      mode === 'deep' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                      'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                    }`}>
+                      {mode === 'ultra' ? '🚀 Ultra Fast' :
+                       mode === 'serp' ? '⚡ Web Search' :
+                       mode === 'deep' ? '🔍 Deep Dive' : mode}
+                    </span>
+                  </div>
                   <div className="prose prose-lg prose-invert max-w-none">
                     <p className="whitespace-pre-wrap text-gray-300 leading-relaxed">{answer}</p>
                   </div>
@@ -317,9 +404,34 @@ export default function HomePage() {
                     </div>
                   )}
 
+                  {mode === 'ultra' && sources.length === 0 && (
+                    <div className="mt-6">
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-yellow-400">💡</span>
+                          <p className="text-yellow-200 text-sm">
+                            This answer is based on my training data. For the most current information, try <strong>Web Search</strong> or <strong>Deep Dive</strong> mode.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {followUpQuestions.length > 0 && (
                     <div className="mt-6">
-                      <h4 className="text-lg font-semibold text-white mb-3">Follow-up Questions:</h4>
+                      <div className="flex items-center gap-2 mb-3">
+                        <h4 className="text-lg font-semibold text-white">Follow-up Questions:</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          mode === 'ultra' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                          mode === 'serp' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                          mode === 'deep' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                          'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                        }`}>
+                          Will use {mode === 'ultra' ? '🚀 Ultra Fast' :
+                                   mode === 'serp' ? '⚡ Web Search' :
+                                   mode === 'deep' ? '🔍 Deep Dive' : mode} mode
+                        </span>
+                      </div>
                       <div className="space-y-2">
                         {followUpQuestions.map((followUpQuestion, i) => (
                           <motion.button
